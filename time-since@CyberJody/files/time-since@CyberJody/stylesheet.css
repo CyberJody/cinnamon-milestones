@@ -1,0 +1,26 @@
+/* Layout only. Colors are intentionally not set so the active
+ * Cinnamon theme's text and desklet background colors are used. */
+.time-since-box {
+    spacing: 4px;
+    padding: 4px 8px;
+}
+.time-since-title {
+    font-weight: bold;
+}
+.time-since-units {
+    spacing: 18px;
+}
+.time-since-unit {
+    min-width: 2.5em;
+}
+.time-since-number {
+    font-weight: bold;
+    text-align: center;
+}
+.time-since-label {
+    text-align: center;
+    opacity: 0.7;
+}
+.time-since-sub {
+    opacity: 0.6;
+}

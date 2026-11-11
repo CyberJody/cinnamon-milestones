@@ -1,0 +1,45 @@
+{
+    "head-target": {
+        "type": "header",
+        "description": "Target"
+    },
+    "title": {
+        "type": "entry",
+        "default": "",
+        "description": "Title",
+        "tooltip": "Optional label shown above the counter, e.g. \"Quit smoking\""
+    },
+    "target-date": {
+        "type": "datechooser",
+        "default": {"y": 2026, "m": 1, "d": 1},
+        "description": "Date"
+    },
+    "target-time": {
+        "type": "timechooser",
+        "default": {"h": 0, "m": 0, "s": 0},
+        "description": "Time"
+    },
+    "head-display": {
+        "type": "header",
+        "description": "Display"
+    },
+    "show-seconds": {
+        "type": "switch",
+        "default": false,
+        "description": "Show seconds"
+    },
+    "show-since-line": {
+        "type": "switch",
+        "default": true,
+        "description": "Show the \"since …\" line"
+    },
+    "scale": {
+        "type": "spinbutton",
+        "default": 1.0,
+        "min": 0.5,
+        "max": 3.0,
+        "step": 0.1,
+        "units": "×",
+        "description": "Size"
+    }
+}
