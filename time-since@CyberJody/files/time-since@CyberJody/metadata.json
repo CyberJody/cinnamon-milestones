@@ -3,6 +3,6 @@
     "name": "Time Since",
     "description": "Shows how long it has been since (or until) a date and time, in days, hours and minutes. Follows your Cinnamon theme.",
     "version": "1.0",
-    "max-instances": "-1",
+    "max-instances": "10",
     "website": "https://github.com/linuxmint/cinnamon-spices-desklets"
 }
