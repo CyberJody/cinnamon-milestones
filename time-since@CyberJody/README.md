@@ -18,8 +18,9 @@ Every field except the title is a picker, so there is nothing to format.
 
 - **Show** – untick to hide a tracker without deleting it
 - **Title** – shown above the counter (optional)
-- **Month / Day / Year** – the date. Year can be **No year** for repeating trackers.
-- **Hour / Min** – the time
+- **Month / Day** – the date
+- **Year** – typed, 4 digits. Leave blank for Monthly and Yearly trackers.
+- **Hr / AM/PM / Min** – the time. Hour is 1–12 with AM or PM, or 0–23 with 24H.
 - **Monthly** – repeats on the chosen day every month; month and year are ignored. Days past the end of a month fall on its last day (31st → Nov 30).
 - **Yearly** – birthdays, anniversaries; repeats on the chosen month and day every year; year is ignored. Feb 29 falls on Feb 28 in non-leap years.
 

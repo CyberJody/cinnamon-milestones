@@ -100,10 +100,33 @@ function nextMonthly(now, d, time) {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
                      "August", "September", "October", "November", "December"];
 
+// Hour field + AM/PM/24H dropdown → 0-23, or null if out of range.
+function hour24(tracker) {
+    let h = tracker.hour, clock = tracker.clock || "24h";
+    if (!Number.isInteger(h)) return null;
+    if (clock === "24h")
+        return h >= 0 && h <= 23 ? h : null;
+    if (h < 1 || h > 12) return null;
+    return (h % 12) + (clock === "pm" ? 12 : 0);
+}
+
+// Year field is free text: "" means no year.
+// Returns a number, null for blank, or NaN if it isn't a year.
+function parseYear(text) {
+    let s = String(text === undefined || text === null ? "" : text).trim();
+    if (!s) return null;
+    return /^\d{4}$/.test(s) ? +s : NaN;
+}
+
 // Works out the moment a tracker counts to/from.
 // Returns {target} or {error: "message"}.
 function resolveTarget(tracker, now) {
-    let time = { h: tracker.hour || 0, m: tracker.minute || 0, s: 0 };
+    let h = hour24(tracker);
+    if (h === null)
+        return { error: (tracker.clock || "24h") === "24h"
+                        ? _("Hour must be 0–23 for 24H")
+                        : _("Hour must be 1–12 for AM/PM") };
+    let time = { h, m: tracker.minute || 0, s: 0 };
     let m = tracker.month, d = tracker.day;
 
     if (tracker.monthly && tracker.yearly)
@@ -120,28 +143,25 @@ function resolveTarget(tracker, now) {
         return { target: nextYearly(now, m, d, time) };
     }
 
-    if (!tracker.year)
-        return { error: _("Pick a year, or tick Monthly or Yearly") };
-    let target = toDateTime(tracker.year, m, d, time);
+    let y = parseYear(tracker.year);
+    if (y === null)
+        return { error: _("Enter a year, or tick Monthly or Yearly") };
+    if (Number.isNaN(y))
+        return { error: _("Year should be 4 digits") + `: "${tracker.year}"` };
+    let target = toDateTime(y, m, d, time);
     if (!target)
-        return { error: noSuch + `, ${tracker.year}` };
+        return { error: noSuch + `, ${y}` };
     return { target };
 }
 
-// Brings rows from older versions up to the current fields:
+// Brings a row from any older version up to the current fields:
 //  v1.1/1.2: free-text date/time + weekly/yearly checkboxes
-//  v1.3:     "repeat" dropdown (none/yearly/weekday), year 1900 meant blank
+//  v1.3:     "repeat" dropdown, year 1900 meant blank
+//  v1.4:     numeric year (0 = none), hour 0-23 with no AM/PM
 // Weekly repeats were dropped; those rows become one-off dates.
 function upgradeRow(row) {
-    if (row.month !== undefined && row.repeat === undefined && row.year !== 1900)
-        return row;                     // already current
-    let now = GLib.DateTime.new_now_local();
     let out;
-    if (row.month !== undefined) {      // v1.3
-        out = Object.assign({}, row);
-        out.yearly = row.repeat === "yearly";
-        delete out.repeat;
-    } else {                            // v1.1/1.2
+    if (row.month === undefined) {      // v1.1/1.2
         let date = parseDate(row.date);
         let time = parseTime(row.time) || { h: 0, m: 0 };
         out = {
@@ -149,16 +169,30 @@ function upgradeRow(row) {
             title: row.title || "",
             month: date ? date.m : 1,
             day: date ? date.d : 1,
-            year: date && date.y !== undefined ? date.y : 0,
+            year: date && date.y !== undefined ? date.y : "",
             hour: time.h,
             minute: time.m,
             yearly: !!row.yearly
         };
+    } else {
+        out = Object.assign({}, row);
+        if (out.repeat !== undefined) { // v1.3
+            out.yearly = out.repeat === "yearly";
+            delete out.repeat;
+        }
     }
     out.monthly = !!out.monthly;
-    if (out.year === 1900) out.year = 0;                    // v1.3 "blank"
-    if (out.yearly) out.year = 0;                           // yearly has no year
-    else if (!out.year) out.year = now.get_year();          // one-off needs one
+    out.yearly = !!out.yearly;
+
+    if (typeof out.year === "number")   // numeric year → text, 0/1900 → blank
+        out.year = (out.year === 0 || out.year === 1900) ? "" : String(out.year);
+    if (out.yearly || out.monthly) out.year = "";
+
+    if (out.clock === undefined) {      // 0-23 hour → 12-hour + AM/PM
+        let h = out.hour || 0;
+        out.clock = h < 12 ? "am" : "pm";
+        out.hour = h % 12 === 0 ? 12 : h % 12;
+    }
     return out;
 }
 
@@ -181,8 +215,9 @@ class TimeSinceDesklet extends Desklet.Desklet {
             this.trackers = [legacy];
 
         let rows = this.trackers || [];
-        if (rows.some(r => r.month === undefined || r.repeat !== undefined || r.year === 1900))
-            this.trackers = rows.map(upgradeRow);
+        let upgraded = rows.map(upgradeRow);
+        if (JSON.stringify(upgraded) !== JSON.stringify(rows))
+            this.trackers = upgraded;
 
         // No hardcoded colors anywhere: text, borders and background all
         // come from the active Cinnamon theme, so the desklet follows theme
