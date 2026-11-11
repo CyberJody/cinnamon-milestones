@@ -100,12 +100,16 @@ function nextMonthly(now, d, time) {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
                      "August", "September", "October", "November", "December"];
 
-// Hour field + AM/PM/24H dropdown → 0-23, or null if out of range.
+// Hour text box + AM/PM/24H dropdown → 0-23, or null if invalid.
+// A blank hour means midnight.
 function hour24(tracker) {
-    let h = tracker.hour, clock = tracker.clock || "24h";
-    if (!Number.isInteger(h)) return null;
+    let clock = tracker.clock || "24h";
+    let text = String(tracker.hour === undefined || tracker.hour === null ? "" : tracker.hour).trim();
+    if (text === "") return 0;
+    if (!/^\d{1,2}$/.test(text)) return null;
+    let h = +text;
     if (clock === "24h")
-        return h >= 0 && h <= 23 ? h : null;
+        return h <= 23 ? h : null;
     if (h < 1 || h > 12) return null;
     return (h % 12) + (clock === "pm" ? 12 : 0);
 }
@@ -193,6 +197,8 @@ function upgradeRow(row) {
         out.clock = h < 12 ? "am" : "pm";
         out.hour = h % 12 === 0 ? 12 : h % 12;
     }
+    if (typeof out.hour === "number")   // v1.5 number box → text box
+        out.hour = String(out.hour);
     return out;
 }
 
