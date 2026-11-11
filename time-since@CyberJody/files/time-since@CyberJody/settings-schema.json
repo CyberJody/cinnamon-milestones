@@ -45,11 +45,11 @@
             }
         ],
         "default": [],
-        "height": 220
+        "height": 124
     },
     "help-formats": {
         "type": "label",
-        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.   Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nYearly: repeats every year; the year can be left off (Mar 14, 3/14).\nWeekly: repeats every week; enter a day (Fri, Friday) or any date that falls on it.\nTrackers show top to bottom in list order; use the arrows to reorder."
+        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.  Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nYearly: repeats every year; the year can be left off (Mar 14, 3/14).\nWeekly: repeats every week; enter a day (Fri) or any date on that day."
     },
     "head-display": {
         "type": "header",
