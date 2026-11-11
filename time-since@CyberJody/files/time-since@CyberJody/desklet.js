@@ -17,52 +17,118 @@ const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun",
+                "jul", "aug", "sep", "oct", "nov", "dec"];
+
+// Accepts 2026-11-10, 2026/11/10, 11/10/2026, 11-10-2026, "Nov 10 2026",
+// "10 Nov 2026", "November 10, 2026". Returns {y, m, d} or null.
+function parseDate(text) {
+    let s = (text || "").trim().toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ");
+    if (!s) return null;
+    let m;
+    if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/)))
+        return { y: +m[1], m: +m[2], d: +m[3] };
+    if ((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/)))
+        return { y: +m[3], m: +m[1], d: +m[2] };            // US order: M/D/Y
+    if ((m = s.match(/^([a-z]+)\.? (\d{1,2})(?:st|nd|rd|th)? (\d{4})$/))) {
+        let mi = MONTHS.indexOf(m[1].slice(0, 3));
+        if (mi >= 0) return { y: +m[3], m: mi + 1, d: +m[2] };
+    }
+    if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]+)\.? (\d{4})$/))) {
+        let mi = MONTHS.indexOf(m[2].slice(0, 3));
+        if (mi >= 0) return { y: +m[3], m: mi + 1, d: +m[1] };
+    }
+    return null;
+}
+
+// Accepts 21:30, 21:30:15, 9:30 PM, 9:30pm, 9pm, 9 am, noon, midnight,
+// or empty (midnight). Returns {h, m, s} or null.
+function parseTime(text) {
+    let s = (text || "").trim().toLowerCase().replace(/\./g, "");
+    if (!s || s === "midnight") return { h: 0, m: 0, s: 0 };
+    if (s === "noon") return { h: 12, m: 0, s: 0 };
+    let m = s.match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(am|pm|a|p)?$/);
+    if (!m) return null;
+    let h = +m[1], min = +(m[2] || 0), sec = +(m[3] || 0);
+    let ap = m[4];
+    if (ap) {
+        if (h < 1 || h > 12) return null;
+        if (ap[0] === "p" && h !== 12) h += 12;
+        if (ap[0] === "a" && h === 12) h = 0;
+    }
+    if (h > 23 || min > 59 || sec > 59) return null;
+    return { h, m: min, s: sec };
+}
+
+function toDateTime(date, time) {
+    try {
+        return GLib.DateTime.new_local(date.y, date.m, date.d, time.h, time.m, time.s);
+    } catch (e) {
+        return null;    // e.g. Feb 30
+    }
+}
+
 class TimeSinceDesklet extends Desklet.Desklet {
     constructor(metadata, deskletId) {
         super(metadata, deskletId);
         this._timeoutId = 0;
 
+        // Read v1.0's single-tracker values before DeskletSettings loads:
+        // its schema upgrade drops keys that no longer exist.
+        let legacy = this._readLegacyTracker(deskletId);
+
         this.settings = new Settings.DeskletSettings(this, UUID, deskletId);
-        this.settings.bind("title", "title", this._rebuild);
-        this.settings.bind("target-date", "targetDate", this._rebuild);
-        this.settings.bind("target-time", "targetTime", this._rebuild);
+        this.settings.bind("trackers", "trackers", this._rebuild);
         this.settings.bind("show-seconds", "showSeconds", this._rebuild);
         this.settings.bind("show-since-line", "showSinceLine", this._rebuild);
         this.settings.bind("scale", "scale", this._rebuild);
 
-        this._buildUi();
-        this.setHeader(_("Time Since"));
-    }
+        if (legacy && (this.trackers || []).length === 0)
+            this.trackers = [legacy];
 
-    _buildUi() {
         // No hardcoded colors anywhere: text, borders and background all
         // come from the active Cinnamon theme, so the desklet follows theme
         // changes automatically.
         this._box = new St.BoxLayout({ vertical: true, style_class: "time-since-box" });
-
-        this._titleLabel = new St.Label({
-            style_class: "time-since-title",
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true
-        });
-        this._unitsBox = new St.BoxLayout({
-            style_class: "time-since-units",
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true
-        });
-        this._sinceLabel = new St.Label({
-            style_class: "time-since-sub",
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true
-        });
-
-        this._sinceLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        this._titleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-
-        this._box.add_actor(this._titleLabel);
-        this._box.add_actor(this._sinceLabel);
-        this._box.add_actor(this._unitsBox);
         this.setContent(this._box);
+        this.setHeader(_("Time Since"));
+    }
+
+    // Version 1.0 stored one tracker in title/target-date/target-time.
+    // Returns that tracker as a list row, or null if there isn't one.
+    _readLegacyTracker(deskletId) {
+        try {
+            let path = GLib.build_filenamev([GLib.get_user_config_dir(),
+                "cinnamon", "spices", UUID, `${deskletId}.json`]);
+            let [ok, bytes] = GLib.file_get_contents(path);
+            if (!ok) return null;
+            let data = JSON.parse(new TextDecoder().decode(bytes));
+            if (data["trackers"] || !data["target-date"] || !data["target-date"].value)
+                return null;
+            let d = data["target-date"].value;
+            let t = (data["target-time"] && data["target-time"].value) || { h: 0, m: 0 };
+            let pad = n => String(n).padStart(2, "0");
+            return {
+                enabled: true,
+                title: (data["title"] && data["title"].value) || "",
+                date: `${d.y}-${pad(d.m)}-${pad(d.d)}`,
+                time: `${pad(t.h)}:${pad(t.m)}`
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    _label(text, styleClass, fontEm) {
+        let l = new St.Label({
+            text: text,
+            style_class: styleClass,
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
+        l.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        l.set_style(`font-size: ${fontEm * this.scale}em;`);
+        return l;
     }
 
     _makeUnit(value, label) {
@@ -84,35 +150,30 @@ class TimeSinceDesklet extends Desklet.Desklet {
         return unit;
     }
 
-    _targetDateTime() {
-        let d = this.targetDate || {};
-        let t = this.targetTime || {};
-        try {
-            let dt = GLib.DateTime.new_local(d.y, d.m, d.d, t.h || 0, t.m || 0, t.s || 0);
-            return dt;
-        } catch (e) {
-            return null;
-        }
-    }
+    _makeTracker(tracker, now) {
+        let box = new St.BoxLayout({
+            vertical: true,
+            style_class: "time-since-tracker",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
 
-    _update() {
-        let target = this._targetDateTime();
-        this._unitsBox.destroy_all_children();
+        if (tracker.title)
+            box.add_actor(this._label(tracker.title, "time-since-title", 1.1));
 
-        let titleScale = `font-size: ${1.1 * this.scale}em;`;
-        let subScale = `font-size: ${0.85 * this.scale}em;`;
-        this._titleLabel.set_style(titleScale);
-        this._sinceLabel.set_style(subScale);
+        let date = parseDate(tracker.date);
+        let time = parseTime(tracker.time);
+        let target = date && time ? toDateTime(date, time) : null;
 
         if (!target) {
-            this._titleLabel.set_text(this.title || _("Time Since"));
-            this._sinceLabel.set_text(_("Right-click → Configure to set a date"));
-            this._fitWidth();
-            return;
+            let bad = !date ? _("Can't read date") + `: "${tracker.date || ""}"`
+                            : !time ? _("Can't read time") + `: "${tracker.time || ""}"`
+                                    : _("No such date") + `: "${tracker.date}"`;
+            box.add_actor(this._label(bad, "time-since-sub", 0.85));
+            return box;
         }
 
-        let now = GLib.DateTime.new_now_local();
-        let diffSec = Math.floor(now.difference(target) / 1000000); // microseconds → seconds
+        let diffSec = Math.floor(now.difference(target) / 1000000); // µs → s
         let future = diffSec < 0;
         let s = Math.abs(diffSec);
 
@@ -121,26 +182,53 @@ class TimeSinceDesklet extends Desklet.Desklet {
         let minutes = Math.floor((s % HOUR) / MINUTE);
         let seconds = s % MINUTE;
 
-        this._titleLabel.set_text(this.title || "");
-        this._titleLabel.visible = !!this.title;
+        if (this.showSinceLine) {
+            let when = target.format("%b %-d, %Y %-l:%M %p");
+            box.add_actor(this._label((future ? _("Until") : _("Since")) + " " + when,
+                                      "time-since-sub", 0.85));
+        }
 
-        this._unitsBox.add_actor(this._makeUnit(days, days === 1 ? _("day") : _("days")));
-        this._unitsBox.add_actor(this._makeUnit(hours, hours === 1 ? _("hour") : _("hours")));
-        this._unitsBox.add_actor(this._makeUnit(minutes, minutes === 1 ? _("min") : _("mins")));
+        let units = new St.BoxLayout({
+            style_class: "time-since-units",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
+        units.add_actor(this._makeUnit(days, days === 1 ? _("day") : _("days")));
+        units.add_actor(this._makeUnit(hours, hours === 1 ? _("hour") : _("hours")));
+        units.add_actor(this._makeUnit(minutes, minutes === 1 ? _("min") : _("mins")));
         if (this.showSeconds)
-            this._unitsBox.add_actor(this._makeUnit(seconds, seconds === 1 ? _("sec") : _("secs")));
+            units.add_actor(this._makeUnit(seconds, seconds === 1 ? _("sec") : _("secs")));
+        box.add_actor(units);
 
-        let when = target.format("%b %-d, %Y %-l:%M %p");
-        this._sinceLabel.set_text((future ? _("Until") : _("Since")) + " " + when);
-        this._sinceLabel.visible = this.showSinceLine;
+        return box;
+    }
+
+    _update() {
+        this._box.destroy_all_children();
+        let now = GLib.DateTime.new_now_local();
+        let active = (this.trackers || []).filter(t => t.enabled !== false);
+
+        if (active.length === 0) {
+            this._box.add_actor(this._label(_("Time Since"), "time-since-title", 1.1));
+            this._box.add_actor(this._label(_("Right-click → Configure to add a tracker"),
+                                            "time-since-sub", 0.85));
+        } else {
+            active.forEach((t, i) => {
+                if (i > 0)
+                    this._box.add_actor(new St.Widget({
+                        style_class: "time-since-separator",
+                        x_expand: true
+                    }));
+                this._box.add_actor(this._makeTracker(t, now));
+            });
+        }
         this._fitWidth();
     }
 
     _fitWidth() {
         // The desklet frame caches its first measured width and won't grow
-        // when a wider line (e.g. the Since/Until subtitle) appears, which
-        // clips the text. Pin the box to its natural width so the frame
-        // always fits the widest line.
+        // when a wider line appears, which clips the text. Pin the box to
+        // its natural width so the frame always fits the widest line.
         this._box.set_width(-1);
         let [, natural] = this._box.get_preferred_width(-1);
         this._box.set_width(natural);
@@ -151,12 +239,9 @@ class TimeSinceDesklet extends Desklet.Desklet {
         // Fire on the next second/minute boundary so the display ticks in
         // step with the system clock, then reschedule.
         let now = GLib.DateTime.new_now_local();
-        let delayMs;
-        if (this.showSeconds) {
-            delayMs = 1000 - Math.floor(now.get_microsecond() / 1000);
-        } else {
-            delayMs = (60 - now.get_second()) * 1000 - Math.floor(now.get_microsecond() / 1000);
-        }
+        let ms = Math.floor(now.get_microsecond() / 1000);
+        let delayMs = this.showSeconds ? 1000 - ms
+                                       : (60 - now.get_second()) * 1000 - ms;
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.max(delayMs, 50), () => {
             this._timeoutId = 0;
             this._update();

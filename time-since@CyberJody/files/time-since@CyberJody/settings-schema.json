@@ -1,23 +1,23 @@
 {
-    "head-target": {
+    "head-trackers": {
         "type": "header",
-        "description": "Target"
+        "description": "Trackers"
     },
-    "title": {
-        "type": "entry",
-        "default": "",
-        "description": "Title",
-        "tooltip": "Optional label shown above the counter, e.g. \"Quit smoking\""
+    "trackers": {
+        "type": "list",
+        "description": "Trackers",
+        "columns": [
+            {"id": "enabled", "title": "Show", "type": "boolean", "default": true},
+            {"id": "title", "title": "Title", "type": "string", "default": ""},
+            {"id": "date", "title": "Date", "type": "string", "default": ""},
+            {"id": "time", "title": "Time", "type": "string", "default": ""}
+        ],
+        "default": [],
+        "height": 220
     },
-    "target-date": {
-        "type": "datechooser",
-        "default": {"y": 2026, "m": 1, "d": 1},
-        "description": "Date"
-    },
-    "target-time": {
-        "type": "timechooser",
-        "default": {"h": 0, "m": 0, "s": 0},
-        "description": "Time"
+    "help-formats": {
+        "type": "label",
+        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.   Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nTrackers show top to bottom in list order; use the arrows to reorder."
     },
     "head-display": {
         "type": "header",

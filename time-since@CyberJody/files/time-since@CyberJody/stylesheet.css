@@ -25,3 +25,11 @@
     opacity: 0.6;
     padding-bottom: 4px;
 }
+.time-since-tracker {
+    spacing: 2px;
+}
+.time-since-separator {
+    height: 1px;
+    margin: 8px 12px;
+    background-color: rgba(128, 128, 128, 0.35);
+}
