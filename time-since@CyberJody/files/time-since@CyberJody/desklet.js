@@ -22,8 +22,6 @@ const DAY = 24 * HOUR;
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun",
                 "jul", "aug", "sep", "oct", "nov", "dec"];
 
-const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-
 function monthIndex(word) {
     return MONTHS.indexOf(word.slice(0, 3));
 }
@@ -45,14 +43,6 @@ function parseDate(text) {
     if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]+)\.?(?: (\d{4}))?$/)) && (mi = monthIndex(m[2])) >= 0)
         return { y: m[3] ? +m[3] : undefined, m: mi + 1, d: +m[1] };
     return null;
-}
-
-// "Fri", "friday" → 5 (GLib numbering: Monday 1 … Sunday 7), else null.
-function parseWeekday(text) {
-    let s = (text || "").trim().toLowerCase();
-    if (s.length < 3) return null;
-    let i = WEEKDAYS.indexOf(s.slice(0, 3));
-    return i >= 0 ? i + 1 : null;
 }
 
 function isValidDate(y, m, d) {
@@ -94,13 +84,17 @@ function nextYearly(now, m, d, time) {
     return null;
 }
 
-// Next weekly occurrence of `weekday` (1-7) at `time` not before `now`.
-function nextWeekly(now, weekday, time) {
-    let today = toDateTime(now.get_year(), now.get_month(), now.get_day_of_month(), time);
-    let ahead = (weekday - now.get_day_of_week() + 7) % 7;
-    let dt = today.add_days(ahead);
-    if (dt.difference(now) < 0) dt = dt.add_days(7);
-    return dt;
+// Next monthly occurrence of day `d` at `time` not before `now`.
+// Days past the end of a month fall on its last day (31st → Feb 28/29, Apr 30).
+function nextMonthly(now, d, time) {
+    let y = now.get_year(), m = now.get_month();
+    for (let i = 0; i < 2; i++) {
+        let dd = Math.min(d, GLib.Date.get_days_in_month(m, y));
+        let dt = toDateTime(y, m, dd, time);
+        if (dt && dt.difference(now) >= 0) return dt;
+        if (++m > 12) { m = 1; y++; }
+    }
+    return null;
 }
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
@@ -110,50 +104,61 @@ const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "Ju
 // Returns {target} or {error: "message"}.
 function resolveTarget(tracker, now) {
     let time = { h: tracker.hour || 0, m: tracker.minute || 0, s: 0 };
-    let repeat = tracker.repeat || "none";
-
-    let wd = parseWeekday(repeat);
-    if (wd)
-        return { target: nextWeekly(now, wd, time) };
-
     let m = tracker.month, d = tracker.day;
+
+    if (tracker.monthly && tracker.yearly)
+        return { error: _("Tick Monthly or Yearly, not both") };
+
+    if (tracker.monthly)                // month and year ignored
+        return { target: nextMonthly(now, d, time) };
+
     let noSuch = _("No such date") + `: ${MONTH_NAMES[m - 1] || m} ${d}`;
 
-    if (repeat === "yearly") {
+    if (tracker.yearly) {               // year ignored
         if (!isValidDate(2024, m, d))   // leap year: allows Feb 29
             return { error: noSuch };
         return { target: nextYearly(now, m, d, time) };
     }
 
+    if (!tracker.year)
+        return { error: _("Pick a year, or tick Monthly or Yearly") };
     let target = toDateTime(tracker.year, m, d, time);
     if (!target)
         return { error: noSuch + `, ${tracker.year}` };
     return { target };
 }
 
-// Converts a v1.1/v1.2 row (free-text date/time + weekly/yearly flags)
-// to the picker fields. Rows already converted are returned unchanged.
+// Brings rows from older versions up to the current fields:
+//  v1.1/1.2: free-text date/time + weekly/yearly checkboxes
+//  v1.3:     "repeat" dropdown (none/yearly/weekday), year 1900 meant blank
+// Weekly repeats were dropped; those rows become one-off dates.
 function upgradeRow(row) {
-    if (row.month !== undefined) return row;
+    if (row.month !== undefined && row.repeat === undefined && row.year !== 1900)
+        return row;                     // already current
     let now = GLib.DateTime.new_now_local();
-    let date = parseDate(row.date);
-    let time = parseTime(row.time) || { h: 0, m: 0 };
-    let out = {
-        enabled: row.enabled !== false,
-        title: row.title || "",
-        repeat: row.yearly ? "yearly" : "none",
-        month: date ? date.m : 1,
-        day: date ? date.d : 1,
-        year: date && date.y !== undefined ? date.y : now.get_year(),
-        hour: time.h,
-        minute: time.m
-    };
-    if (row.weekly) {
-        let wd = parseWeekday(row.date);
-        if (!wd && date && date.y !== undefined && isValidDate(date.y, date.m, date.d))
-            wd = GLib.DateTime.new_local(date.y, date.m, date.d, 0, 0, 0).get_day_of_week();
-        if (wd) out.repeat = WEEKDAYS[wd - 1];
+    let out;
+    if (row.month !== undefined) {      // v1.3
+        out = Object.assign({}, row);
+        out.yearly = row.repeat === "yearly";
+        delete out.repeat;
+    } else {                            // v1.1/1.2
+        let date = parseDate(row.date);
+        let time = parseTime(row.time) || { h: 0, m: 0 };
+        out = {
+            enabled: row.enabled !== false,
+            title: row.title || "",
+            month: date ? date.m : 1,
+            day: date ? date.d : 1,
+            year: date && date.y !== undefined ? date.y : 0,
+            hour: time.h,
+            minute: time.m,
+            yearly: !!row.yearly
+        };
     }
+    out.monthly = !!out.monthly;
+    if (out.year === 1900) out.year = 0;                    // v1.3 "blank"
+    if (out.yearly) out.year = 0;                           // yearly has no year
+    else if (!out.year) out.year = now.get_year();          // one-off needs one
     return out;
 }
 
@@ -176,7 +181,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
             this.trackers = [legacy];
 
         let rows = this.trackers || [];
-        if (rows.some(r => r.month === undefined))
+        if (rows.some(r => r.month === undefined || r.repeat !== undefined || r.year === 1900))
             this.trackers = rows.map(upgradeRow);
 
         // No hardcoded colors anywhere: text, borders and background all
@@ -271,8 +276,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
         let seconds = s % MINUTE;
 
         if (this.showSinceLine) {
-            let when = parseWeekday(tracker.repeat) ? target.format("%a, %b %-d %-l:%M %p")
-                                      : target.format("%b %-d, %Y %-l:%M %p");
+            let when = target.format("%b %-d, %Y %-l:%M %p");
             box.add_actor(this._label((future ? _("Until") : _("Since")) + " " + when,
                                       "time-since-sub", 0.85));
         }

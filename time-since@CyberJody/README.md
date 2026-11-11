@@ -14,16 +14,16 @@ Past dates count up ("Since …"); future dates count down ("Until …") and swi
 
 ## Tracker fields
 
-Every field is a picker, so there is nothing to type except the title.
+Every field except the title is a picker, so there is nothing to format.
 
 - **Show** – untick to hide a tracker without deleting it
 - **Title** – shown above the counter (optional)
-- **Repeat**
-  - **Never** – counts to or from one exact date and time
-  - **Yearly** – birthdays, anniversaries; counts down to the next one and starts over. The year is ignored. Feb 29 falls on Feb 28 in non-leap years.
-  - **Every Monday … Every Sunday** – weekly; counts down to the next one at the chosen time. The date is ignored.
-- **Month / Day / Year** – the date
+- **Month / Day / Year** – the date. Year can be **No year** for repeating trackers.
 - **Hour / Min** – the time
+- **Monthly** – repeats on the chosen day every month; month and year are ignored. Days past the end of a month fall on its last day (31st → Nov 30).
+- **Yearly** – birthdays, anniversaries; repeats on the chosen month and day every year; year is ignored. Feb 29 falls on Feb 28 in non-leap years.
+
+A repeating tracker counts down to its next occurrence and starts over once it arrives. A one-off tracker counts down to a future date or up from a past one.
 
 Use the arrow buttons to reorder. An impossible date (e.g. February 31) shows an error on the desklet instead of a counter.
 
