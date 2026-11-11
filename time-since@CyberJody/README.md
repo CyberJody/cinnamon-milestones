@@ -14,16 +14,22 @@ Past dates count up ("Since …"); future dates count down ("Until …") and swi
 
 ## Tracker fields
 
+Every field is a picker, so there is nothing to type except the title.
+
 - **Show** – untick to hide a tracker without deleting it
 - **Title** – shown above the counter (optional)
-- **Date** – `2026-11-10`, `11/10/2026` (month first), `Nov 10 2026` or `10 Nov 2026`
-- **Time** – `21:30`, `9:30 PM`, `9pm`, `noon`, or blank for midnight
-- **Yearly** – repeat every year (birthdays, anniversaries). The year can be left off: `Mar 14`, `14 Mar`, `3/14`. Feb 29 falls on Feb 28 in non-leap years.
-- **Weekly** – repeat every week. Enter a day (`Fri`, `Friday`) or any date that falls on that day.
+- **Repeat**
+  - **Never** – counts to or from one exact date and time
+  - **Yearly** – birthdays, anniversaries; counts down to the next one and starts over. The year is ignored. Feb 29 falls on Feb 28 in non-leap years.
+  - **Every Monday … Every Sunday** – weekly; counts down to the next one at the chosen time. The date is ignored.
+- **Month / Day / Year** – the date
+- **Hour / Min** – the time
 
-A repeating tracker always counts down to its next occurrence and starts over once it arrives.
+Use the arrow buttons to reorder. An impossible date (e.g. February 31) shows an error on the desklet instead of a counter.
 
-Use the arrow buttons to reorder trackers. A date or time that can't be read shows an error on the desklet instead of a counter.
+## Backup
+
+**Back up to a file…** and **Restore from a file…** save and load all trackers and display options. They use the same file format as the settings window's own Export / Import menu items. Restoring replaces the current list.
 
 ## Display options
 

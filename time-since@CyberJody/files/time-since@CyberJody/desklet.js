@@ -4,6 +4,8 @@ const St = imports.gi.St;
 const Clutter = imports.gi.Clutter;
 const Pango = imports.gi.Pango;
 const GLib = imports.gi.GLib;
+const Main = imports.ui.main;
+const Util = imports.misc.util;
 const Gettext = imports.gettext;
 
 const UUID = "time-since@CyberJody";
@@ -101,45 +103,58 @@ function nextWeekly(now, weekday, time) {
     return dt;
 }
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
+                     "August", "September", "October", "November", "December"];
+
 // Works out the moment a tracker counts to/from.
 // Returns {target} or {error: "message"}.
 function resolveTarget(tracker, now) {
-    let time = parseTime(tracker.time);
-    if (!time)
-        return { error: _("Can't read time") + `: "${tracker.time}"` };
+    let time = { h: tracker.hour || 0, m: tracker.minute || 0, s: 0 };
+    let repeat = tracker.repeat || "none";
 
-    if (tracker.weekly && tracker.yearly)
-        return { error: _("Tick Weekly or Yearly, not both") };
-
-    if (tracker.weekly) {
-        let wd = parseWeekday(tracker.date);
-        if (!wd) {
-            // A full date also works: repeat on that date's weekday.
-            let date = parseDate(tracker.date);
-            if (date && date.y !== undefined && isValidDate(date.y, date.m, date.d))
-                wd = GLib.DateTime.new_local(date.y, date.m, date.d, 0, 0, 0).get_day_of_week();
-        }
-        if (!wd)
-            return { error: _("Can't read day") + `: "${tracker.date || ""}"` };
+    let wd = parseWeekday(repeat);
+    if (wd)
         return { target: nextWeekly(now, wd, time) };
+
+    let m = tracker.month, d = tracker.day;
+    let noSuch = _("No such date") + `: ${MONTH_NAMES[m - 1] || m} ${d}`;
+
+    if (repeat === "yearly") {
+        if (!isValidDate(2024, m, d))   // leap year: allows Feb 29
+            return { error: noSuch };
+        return { target: nextYearly(now, m, d, time) };
     }
 
-    let date = parseDate(tracker.date);
-    if (!date)
-        return { error: _("Can't read date") + `: "${tracker.date || ""}"` };
-
-    if (tracker.yearly) {
-        if (!isValidDate(2024, date.m, date.d))   // leap year: allows Feb 29
-            return { error: _("No such date") + `: "${tracker.date}"` };
-        return { target: nextYearly(now, date.m, date.d, time) };
-    }
-
-    if (date.y === undefined)
-        return { error: _("Add a year, or tick Yearly") };
-    let target = toDateTime(date.y, date.m, date.d, time);
+    let target = toDateTime(tracker.year, m, d, time);
     if (!target)
-        return { error: _("No such date") + `: "${tracker.date}"` };
+        return { error: noSuch + `, ${tracker.year}` };
     return { target };
+}
+
+// Converts a v1.1/v1.2 row (free-text date/time + weekly/yearly flags)
+// to the picker fields. Rows already converted are returned unchanged.
+function upgradeRow(row) {
+    if (row.month !== undefined) return row;
+    let now = GLib.DateTime.new_now_local();
+    let date = parseDate(row.date);
+    let time = parseTime(row.time) || { h: 0, m: 0 };
+    let out = {
+        enabled: row.enabled !== false,
+        title: row.title || "",
+        repeat: row.yearly ? "yearly" : "none",
+        month: date ? date.m : 1,
+        day: date ? date.d : 1,
+        year: date && date.y !== undefined ? date.y : now.get_year(),
+        hour: time.h,
+        minute: time.m
+    };
+    if (row.weekly) {
+        let wd = parseWeekday(row.date);
+        if (!wd && date && date.y !== undefined && isValidDate(date.y, date.m, date.d))
+            wd = GLib.DateTime.new_local(date.y, date.m, date.d, 0, 0, 0).get_day_of_week();
+        if (wd) out.repeat = WEEKDAYS[wd - 1];
+    }
+    return out;
 }
 
 class TimeSinceDesklet extends Desklet.Desklet {
@@ -159,6 +174,10 @@ class TimeSinceDesklet extends Desklet.Desklet {
 
         if (legacy && (this.trackers || []).length === 0)
             this.trackers = [legacy];
+
+        let rows = this.trackers || [];
+        if (rows.some(r => r.month === undefined))
+            this.trackers = rows.map(upgradeRow);
 
         // No hardcoded colors anywhere: text, borders and background all
         // come from the active Cinnamon theme, so the desklet follows theme
@@ -252,7 +271,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
         let seconds = s % MINUTE;
 
         if (this.showSinceLine) {
-            let when = tracker.weekly ? target.format("%a, %b %-d %-l:%M %p")
+            let when = parseWeekday(tracker.repeat) ? target.format("%a, %b %-d %-l:%M %p")
                                       : target.format("%b %-d, %Y %-l:%M %p");
             box.add_actor(this._label((future ? _("Until") : _("Since")) + " " + when,
                                       "time-since-sub", 0.85));
@@ -330,6 +349,61 @@ class TimeSinceDesklet extends Desklet.Desklet {
     _rebuild() {
         this._update();
         this._schedule();
+    }
+
+    // ---- Back up / Restore (buttons in the settings window) ----
+    // Files use the same format as the settings window's own
+    // "Export to a file" / "Import from a file", so either can read the other.
+
+    _chooseFile(save, callback) {
+        let argv = ["zenity", "--file-selection", "--title",
+                    save ? _("Back up Time Since trackers") : _("Restore Time Since trackers"),
+                    "--file-filter", _("JSON files") + " | *.json"];
+        if (save) {
+            let stamp = GLib.DateTime.new_now_local().format("%Y-%m-%d");
+            argv.push("--save", "--filename",
+                      GLib.build_filenamev([GLib.get_home_dir(), `time-since-backup-${stamp}.json`]));
+        }
+        Util.spawnCommandLineAsyncIO(null, (stdout, stderr, code) => {
+            let path = (stdout || "").trim();
+            if (code === 0 && path) callback(path);   // non-zero = cancelled
+        }, { argv });
+    }
+
+    backupToFile() {
+        this._chooseFile(true, path => {
+            if (!path.endsWith(".json")) path += ".json";
+            try {
+                let data = JSON.stringify(this.settings.settingsData, null, 4);
+                GLib.file_set_contents(path, data);
+                let n = (this.trackers || []).length;
+                Main.notify(_("Time Since"), _("Backed up %d tracker(s) to %s").format(n, path));
+            } catch (e) {
+                Main.notifyError(_("Time Since: backup failed"), String(e));
+            }
+        });
+    }
+
+    restoreFromFile() {
+        this._chooseFile(false, path => {
+            try {
+                let [, bytes] = GLib.file_get_contents(path);
+                let data = JSON.parse(new TextDecoder().decode(bytes));
+                if (!data || !data.trackers || !Array.isArray(data.trackers.value))
+                    throw new Error(_("Not a Time Since backup"));
+                for (let key in this.settings.settingsData) {
+                    let mine = this.settings.settingsData[key];
+                    if (key === "__md5__" || !mine || mine.value === undefined) continue;
+                    if (data[key] && data[key].value !== undefined)
+                        this.settings.setValue(key, data[key].value);
+                }
+                this._rebuild();
+                Main.notify(_("Time Since"),
+                    _("Restored %d tracker(s) from %s").format(data.trackers.value.length, path));
+            } catch (e) {
+                Main.notifyError(_("Time Since: restore failed"), String(e.message || e));
+            }
+        });
     }
 
     on_desklet_added_to_desktop() {

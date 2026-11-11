@@ -20,28 +20,100 @@
                 "default": ""
             },
             {
-                "id": "date",
-                "title": "Date",
+                "id": "repeat",
+                "title": "Repeat",
                 "type": "string",
-                "default": ""
+                "default": "none",
+                "options": {
+                    "Never": "none",
+                    "Yearly": "yearly",
+                    "Every Monday": "mon",
+                    "Every Tuesday": "tue",
+                    "Every Wednesday": "wed",
+                    "Every Thursday": "thu",
+                    "Every Friday": "fri",
+                    "Every Saturday": "sat",
+                    "Every Sunday": "sun"
+                }
             },
             {
-                "id": "time",
-                "title": "Time",
-                "type": "string",
-                "default": ""
+                "id": "month",
+                "title": "Month",
+                "type": "integer",
+                "default": 1,
+                "options": {
+                    "January": 1,
+                    "February": 2,
+                    "March": 3,
+                    "April": 4,
+                    "May": 5,
+                    "June": 6,
+                    "July": 7,
+                    "August": 8,
+                    "September": 9,
+                    "October": 10,
+                    "November": 11,
+                    "December": 12
+                }
             },
             {
-                "id": "weekly",
-                "title": "Weekly",
-                "type": "boolean",
-                "default": false
+                "id": "day",
+                "title": "Day",
+                "type": "integer",
+                "default": 1,
+                "min": 1,
+                "max": 31,
+                "step": 1
             },
             {
-                "id": "yearly",
-                "title": "Yearly",
-                "type": "boolean",
-                "default": false
+                "id": "year",
+                "title": "Year",
+                "type": "integer",
+                "default": 2026,
+                "min": 1900,
+                "max": 2200,
+                "step": 1
+            },
+            {
+                "id": "hour",
+                "title": "Hour",
+                "type": "integer",
+                "default": 0,
+                "options": {
+                    "12 AM": 0,
+                    "1 AM": 1,
+                    "2 AM": 2,
+                    "3 AM": 3,
+                    "4 AM": 4,
+                    "5 AM": 5,
+                    "6 AM": 6,
+                    "7 AM": 7,
+                    "8 AM": 8,
+                    "9 AM": 9,
+                    "10 AM": 10,
+                    "11 AM": 11,
+                    "12 PM": 12,
+                    "1 PM": 13,
+                    "2 PM": 14,
+                    "3 PM": 15,
+                    "4 PM": 16,
+                    "5 PM": 17,
+                    "6 PM": 18,
+                    "7 PM": 19,
+                    "8 PM": 20,
+                    "9 PM": 21,
+                    "10 PM": 22,
+                    "11 PM": 23
+                }
+            },
+            {
+                "id": "minute",
+                "title": "Min",
+                "type": "integer",
+                "default": 0,
+                "min": 0,
+                "max": 59,
+                "step": 1
             }
         ],
         "default": [],
@@ -49,7 +121,7 @@
     },
     "help-formats": {
         "type": "label",
-        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.  Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nYearly: repeats every year; the year can be left off (Mar 14, 3/14).\nWeekly: repeats every week; enter a day (Fri) or any date on that day."
+        "description": "Yearly ignores the year. \"Every …day\" ignores the date and repeats weekly at the chosen time."
     },
     "head-display": {
         "type": "header",
@@ -73,5 +145,29 @@
         "step": 0.1,
         "units": "×",
         "description": "Size"
+    },
+    "head-backup": {
+        "type": "header",
+        "description": "Backup"
+    },
+    "backup-button": {
+        "type": "button",
+        "description": "Back up to a file…",
+        "callback": "backupToFile",
+        "tooltip": "Save all trackers and display options to a .json file"
+    },
+    "restore-button": {
+        "type": "button",
+        "description": "Restore from a file…",
+        "callback": "restoreFromFile",
+        "tooltip": "Load trackers and display options from a backup. Replaces the current list."
+    },
+    "zz-bottom-spacer": {
+        "type": "header",
+        "description": ""
+    },
+    "zz-bottom-spacer-2": {
+        "type": "header",
+        "description": ""
     }
 }
