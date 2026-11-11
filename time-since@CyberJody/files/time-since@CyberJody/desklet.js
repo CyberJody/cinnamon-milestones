@@ -155,8 +155,24 @@ class TimeSinceDesklet extends Desklet.Desklet {
 
     on_desklet_removed() {
         this._stopTimer();
-        if (this.settings)
-            this.settings.finalize();
+        if (this.settings) {
+            // Cinnamon calls this after a fade-out, so on reload the new
+            // instance may already have registered under the same id.
+            // Only finalize if the registry still points at us; otherwise
+            // finalize() would unregister the new instance and the settings
+            // window could no longer push live changes to it.
+            const Main = imports.ui.main;
+            let reg = Main.settingsManager.uuids[UUID];
+            let id = this.settings.instanceId;
+            if (reg && reg[id] && reg[id] !== this.settings) {
+                for (let key in this.settings.bindings)
+                    this.settings.unbindAll(key);
+                this.settings.disconnectAll();
+            } else {
+                this.settings.finalize();
+            }
+            this.settings = null;
+        }
     }
 }
 

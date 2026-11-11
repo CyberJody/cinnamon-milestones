@@ -31,7 +31,7 @@
     "show-since-line": {
         "type": "switch",
         "default": true,
-        "description": "Show the \"since …\" line"
+        "description": "Show the \"Since / Until\" line"
     },
     "scale": {
         "type": "spinbutton",
