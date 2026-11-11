@@ -1,6 +1,7 @@
 const Desklet = imports.ui.desklet;
 const Settings = imports.ui.settings;
 const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 
@@ -38,9 +39,17 @@ class TimeSinceDesklet extends Desklet.Desklet {
         // changes automatically.
         this._box = new St.BoxLayout({ vertical: true, style_class: "time-since-box" });
 
-        this._titleLabel = new St.Label({ style_class: "time-since-title" });
+        this._titleLabel = new St.Label({
+            style_class: "time-since-title",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
         this._unitsBox = new St.BoxLayout({ style_class: "time-since-units" });
-        this._sinceLabel = new St.Label({ style_class: "time-since-sub" });
+        this._sinceLabel = new St.Label({
+            style_class: "time-since-sub",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
 
         this._box.add_actor(this._titleLabel);
         this._box.add_actor(this._unitsBox);
