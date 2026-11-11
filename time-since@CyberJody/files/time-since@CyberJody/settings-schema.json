@@ -7,17 +7,49 @@
         "type": "list",
         "description": "Trackers",
         "columns": [
-            {"id": "enabled", "title": "Show", "type": "boolean", "default": true},
-            {"id": "title", "title": "Title", "type": "string", "default": ""},
-            {"id": "date", "title": "Date", "type": "string", "default": ""},
-            {"id": "time", "title": "Time", "type": "string", "default": ""}
+            {
+                "id": "enabled",
+                "title": "Show",
+                "type": "boolean",
+                "default": true
+            },
+            {
+                "id": "title",
+                "title": "Title",
+                "type": "string",
+                "default": ""
+            },
+            {
+                "id": "date",
+                "title": "Date",
+                "type": "string",
+                "default": ""
+            },
+            {
+                "id": "time",
+                "title": "Time",
+                "type": "string",
+                "default": ""
+            },
+            {
+                "id": "weekly",
+                "title": "Weekly",
+                "type": "boolean",
+                "default": false
+            },
+            {
+                "id": "yearly",
+                "title": "Yearly",
+                "type": "boolean",
+                "default": false
+            }
         ],
         "default": [],
         "height": 220
     },
     "help-formats": {
         "type": "label",
-        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.   Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nTrackers show top to bottom in list order; use the arrows to reorder."
+        "description": "Date: 2026-11-10, 11/10/2026 or Nov 10 2026.   Time: 21:30, 9:30 PM, 9pm, or blank for midnight.\nYearly: repeats every year; the year can be left off (Mar 14, 3/14).\nWeekly: repeats every week; enter a day (Fri, Friday) or any date that falls on it.\nTrackers show top to bottom in list order; use the arrows to reorder."
     },
     "head-display": {
         "type": "header",

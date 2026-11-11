@@ -18,6 +18,10 @@ Past dates count up ("Since …"); future dates count down ("Until …") and swi
 - **Title** – shown above the counter (optional)
 - **Date** – `2026-11-10`, `11/10/2026` (month first), `Nov 10 2026` or `10 Nov 2026`
 - **Time** – `21:30`, `9:30 PM`, `9pm`, `noon`, or blank for midnight
+- **Yearly** – repeat every year (birthdays, anniversaries). The year can be left off: `Mar 14`, `14 Mar`, `3/14`. Feb 29 falls on Feb 28 in non-leap years.
+- **Weekly** – repeat every week. Enter a day (`Fri`, `Friday`) or any date that falls on that day.
+
+A repeating tracker always counts down to its next occurrence and starts over once it arrives.
 
 Use the arrow buttons to reorder trackers. A date or time that can't be read shows an error on the desklet instead of a counter.
 

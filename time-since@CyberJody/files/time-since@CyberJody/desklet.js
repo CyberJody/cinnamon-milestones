@@ -20,25 +20,41 @@ const DAY = 24 * HOUR;
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun",
                 "jul", "aug", "sep", "oct", "nov", "dec"];
 
+const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+function monthIndex(word) {
+    return MONTHS.indexOf(word.slice(0, 3));
+}
+
 // Accepts 2026-11-10, 2026/11/10, 11/10/2026, 11-10-2026, "Nov 10 2026",
-// "10 Nov 2026", "November 10, 2026". Returns {y, m, d} or null.
+// "10 Nov 2026", "November 10, 2026". The year may be left off
+// ("Mar 14", "14 Mar", "3/14", "03-14"), for yearly trackers.
+// Returns {y, m, d} (y undefined when omitted) or null.
 function parseDate(text) {
     let s = (text || "").trim().toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ");
     if (!s) return null;
-    let m;
+    let m, mi;
     if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/)))
         return { y: +m[1], m: +m[2], d: +m[3] };
-    if ((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/)))
-        return { y: +m[3], m: +m[1], d: +m[2] };            // US order: M/D/Y
-    if ((m = s.match(/^([a-z]+)\.? (\d{1,2})(?:st|nd|rd|th)? (\d{4})$/))) {
-        let mi = MONTHS.indexOf(m[1].slice(0, 3));
-        if (mi >= 0) return { y: +m[3], m: mi + 1, d: +m[2] };
-    }
-    if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]+)\.? (\d{4})$/))) {
-        let mi = MONTHS.indexOf(m[2].slice(0, 3));
-        if (mi >= 0) return { y: +m[3], m: mi + 1, d: +m[1] };
-    }
+    if ((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{4}))?$/)))
+        return { y: m[3] ? +m[3] : undefined, m: +m[1], d: +m[2] };   // US order: M/D[/Y]
+    if ((m = s.match(/^([a-z]+)\.? (\d{1,2})(?:st|nd|rd|th)?(?: (\d{4}))?$/)) && (mi = monthIndex(m[1])) >= 0)
+        return { y: m[3] ? +m[3] : undefined, m: mi + 1, d: +m[2] };
+    if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]+)\.?(?: (\d{4}))?$/)) && (mi = monthIndex(m[2])) >= 0)
+        return { y: m[3] ? +m[3] : undefined, m: mi + 1, d: +m[1] };
     return null;
+}
+
+// "Fri", "friday" → 5 (GLib numbering: Monday 1 … Sunday 7), else null.
+function parseWeekday(text) {
+    let s = (text || "").trim().toLowerCase();
+    if (s.length < 3) return null;
+    let i = WEEKDAYS.indexOf(s.slice(0, 3));
+    return i >= 0 ? i + 1 : null;
+}
+
+function isValidDate(y, m, d) {
+    return m >= 1 && m <= 12 && d >= 1 && d <= GLib.Date.get_days_in_month(m, y);
 }
 
 // Accepts 21:30, 21:30:15, 9:30 PM, 9:30pm, 9pm, 9 am, noon, midnight,
@@ -60,12 +76,70 @@ function parseTime(text) {
     return { h, m: min, s: sec };
 }
 
-function toDateTime(date, time) {
-    try {
-        return GLib.DateTime.new_local(date.y, date.m, date.d, time.h, time.m, time.s);
-    } catch (e) {
-        return null;    // e.g. Feb 30
+function toDateTime(y, m, d, time) {
+    if (!isValidDate(y, m, d)) return null;
+    return GLib.DateTime.new_local(y, m, d, time.h, time.m, time.s);
+}
+
+// Next yearly occurrence of month/day at `time` that is not before `now`.
+// Feb 29 falls on Feb 28 in non-leap years.
+function nextYearly(now, m, d, time) {
+    for (let y = now.get_year(); y <= now.get_year() + 1; y++) {
+        let dd = (m === 2 && d === 29 && !GLib.Date.is_leap_year(y)) ? 28 : d;
+        let dt = toDateTime(y, m, dd, time);
+        if (dt && dt.difference(now) >= 0) return dt;
     }
+    return null;
+}
+
+// Next weekly occurrence of `weekday` (1-7) at `time` not before `now`.
+function nextWeekly(now, weekday, time) {
+    let today = toDateTime(now.get_year(), now.get_month(), now.get_day_of_month(), time);
+    let ahead = (weekday - now.get_day_of_week() + 7) % 7;
+    let dt = today.add_days(ahead);
+    if (dt.difference(now) < 0) dt = dt.add_days(7);
+    return dt;
+}
+
+// Works out the moment a tracker counts to/from.
+// Returns {target} or {error: "message"}.
+function resolveTarget(tracker, now) {
+    let time = parseTime(tracker.time);
+    if (!time)
+        return { error: _("Can't read time") + `: "${tracker.time}"` };
+
+    if (tracker.weekly && tracker.yearly)
+        return { error: _("Tick Weekly or Yearly, not both") };
+
+    if (tracker.weekly) {
+        let wd = parseWeekday(tracker.date);
+        if (!wd) {
+            // A full date also works: repeat on that date's weekday.
+            let date = parseDate(tracker.date);
+            if (date && date.y !== undefined && isValidDate(date.y, date.m, date.d))
+                wd = GLib.DateTime.new_local(date.y, date.m, date.d, 0, 0, 0).get_day_of_week();
+        }
+        if (!wd)
+            return { error: _("Can't read day") + `: "${tracker.date || ""}"` };
+        return { target: nextWeekly(now, wd, time) };
+    }
+
+    let date = parseDate(tracker.date);
+    if (!date)
+        return { error: _("Can't read date") + `: "${tracker.date || ""}"` };
+
+    if (tracker.yearly) {
+        if (!isValidDate(2024, date.m, date.d))   // leap year: allows Feb 29
+            return { error: _("No such date") + `: "${tracker.date}"` };
+        return { target: nextYearly(now, date.m, date.d, time) };
+    }
+
+    if (date.y === undefined)
+        return { error: _("Add a year, or tick Yearly") };
+    let target = toDateTime(date.y, date.m, date.d, time);
+    if (!target)
+        return { error: _("No such date") + `: "${tracker.date}"` };
+    return { target };
 }
 
 class TimeSinceDesklet extends Desklet.Desklet {
@@ -161,17 +235,12 @@ class TimeSinceDesklet extends Desklet.Desklet {
         if (tracker.title)
             box.add_actor(this._label(tracker.title, "time-since-title", 1.1));
 
-        let date = parseDate(tracker.date);
-        let time = parseTime(tracker.time);
-        let target = date && time ? toDateTime(date, time) : null;
-
-        if (!target) {
-            let bad = !date ? _("Can't read date") + `: "${tracker.date || ""}"`
-                            : !time ? _("Can't read time") + `: "${tracker.time || ""}"`
-                                    : _("No such date") + `: "${tracker.date}"`;
-            box.add_actor(this._label(bad, "time-since-sub", 0.85));
+        let resolved = resolveTarget(tracker, now);
+        if (resolved.error) {
+            box.add_actor(this._label(resolved.error, "time-since-sub", 0.85));
             return box;
         }
+        let target = resolved.target;
 
         let diffSec = Math.floor(now.difference(target) / 1000000); // µs → s
         let future = diffSec < 0;
@@ -183,7 +252,8 @@ class TimeSinceDesklet extends Desklet.Desklet {
         let seconds = s % MINUTE;
 
         if (this.showSinceLine) {
-            let when = target.format("%b %-d, %Y %-l:%M %p");
+            let when = tracker.weekly ? target.format("%a, %b %-d %-l:%M %p")
+                                      : target.format("%b %-d, %Y %-l:%M %p");
             box.add_actor(this._label((future ? _("Until") : _("Since")) + " " + when,
                                       "time-since-sub", 0.85));
         }
