@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Tracker list and inline editor for the Time Since settings window.
+"""Tracker list and inline editor for the Since and Until settings window.
 
 Cinnamon's settings window loads this through the "custom" settings type.
 It edits the "trackers" setting (a list of rows) in place: select a tracker
@@ -19,7 +19,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, Gtk, Pango
 from xapp.SettingsWidgets import SettingsWidget
 
-UUID = "time-since@CyberJody"
+UUID = "since-until@CyberJody"
 KEY = "trackers"
 
 gettext.bindtextdomain(UUID, os.path.expanduser("~/.local/share/locale"))
@@ -36,7 +36,7 @@ CLOCKS = [("am", "AM"), ("pm", "PM"), ("24h", "24H")]
 DAY_WIDTH, DAY_HEIGHT = 34, 28
 
 # Sizes only. Colors always come from the GTK theme.
-CSS = (".time-since-day { padding: 0; margin: 1px; min-width: %dpx; min-height: %dpx; }"
+CSS = (".since-until-day { padding: 0; margin: 1px; min-width: %dpx; min-height: %dpx; }"
        % (DAY_WIDTH, DAY_HEIGHT)).encode()
 
 COL_SHOW, COL_TITLE, COL_DATE, COL_TIME, COL_MONTHLY, COL_YEARLY = range(6)
@@ -572,7 +572,7 @@ class TrackerEditor(SettingsWidget):
             button = Gtk.RadioButton.new_with_label_from_widget(self._no_day, str(day))
             button.set_mode(False)
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.get_style_context().add_class("time-since-day")
+            button.get_style_context().add_class("since-until-day")
             button.connect("toggled", self._on_day_toggled, day)
             cell = offset + day - 1
             self.calendar_grid.attach(button, cell % 7, top + cell // 7, 1, 1)

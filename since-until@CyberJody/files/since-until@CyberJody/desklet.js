@@ -8,7 +8,7 @@ const Main = imports.ui.main;
 const Util = imports.misc.util;
 const Gettext = imports.gettext;
 
-const UUID = "time-since@CyberJody";
+const UUID = "since-until@CyberJody";
 Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
 
 function _(str) {
@@ -202,7 +202,7 @@ function upgradeRow(row) {
     return out;
 }
 
-class TimeSinceDesklet extends Desklet.Desklet {
+class SinceUntilDesklet extends Desklet.Desklet {
     constructor(metadata, deskletId) {
         super(metadata, deskletId);
         this._timeoutId = 0;
@@ -225,9 +225,9 @@ class TimeSinceDesklet extends Desklet.Desklet {
         // No hardcoded colors anywhere: text, borders and background all
         // come from the active Cinnamon theme, so the desklet follows theme
         // changes automatically.
-        this._box = new St.BoxLayout({ vertical: true, style_class: "time-since-box" });
+        this._box = new St.BoxLayout({ vertical: true, style_class: "since-until-box" });
         this.setContent(this._box);
-        this.setHeader(_("Time Since"));
+        this.setHeader(_("Since and Until"));
     }
 
     // Version 1.0 stored one tracker in title/target-date/target-time.
@@ -268,15 +268,15 @@ class TimeSinceDesklet extends Desklet.Desklet {
     }
 
     _makeUnit(value, label) {
-        let unit = new St.BoxLayout({ vertical: true, style_class: "time-since-unit" });
+        let unit = new St.BoxLayout({ vertical: true, style_class: "since-until-unit" });
         let num = new St.Label({
             text: String(value),
-            style_class: "time-since-number",
+            style_class: "since-until-number",
             x_align: Clutter.ActorAlign.CENTER
         });
         let lbl = new St.Label({
             text: label,
-            style_class: "time-since-label",
+            style_class: "since-until-label",
             x_align: Clutter.ActorAlign.CENTER
         });
         num.set_style(`font-size: ${2.4 * this.scale}em;`);
@@ -289,17 +289,17 @@ class TimeSinceDesklet extends Desklet.Desklet {
     _makeTracker(tracker, now) {
         let box = new St.BoxLayout({
             vertical: true,
-            style_class: "time-since-tracker",
+            style_class: "since-until-tracker",
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true
         });
 
         if (tracker.title)
-            box.add_actor(this._label(tracker.title, "time-since-title", 1.1));
+            box.add_actor(this._label(tracker.title, "since-until-title", 1.1));
 
         let resolved = resolveTarget(tracker, now);
         if (resolved.error) {
-            box.add_actor(this._label(resolved.error, "time-since-sub", 0.85));
+            box.add_actor(this._label(resolved.error, "since-until-sub", 0.85));
             return box;
         }
         let target = resolved.target;
@@ -316,11 +316,11 @@ class TimeSinceDesklet extends Desklet.Desklet {
         if (this.showSinceLine) {
             let when = target.format("%b %-d, %Y %-l:%M %p");
             box.add_actor(this._label((future ? _("Until") : _("Since")) + " " + when,
-                                      "time-since-sub", 0.85));
+                                      "since-until-sub", 0.85));
         }
 
         let units = new St.BoxLayout({
-            style_class: "time-since-units",
+            style_class: "since-until-units",
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true
         });
@@ -340,14 +340,14 @@ class TimeSinceDesklet extends Desklet.Desklet {
         let active = (this.trackers || []).filter(t => t.enabled !== false);
 
         if (active.length === 0) {
-            this._box.add_actor(this._label(_("Time Since"), "time-since-title", 1.1));
+            this._box.add_actor(this._label(_("Since and Until"), "since-until-title", 1.1));
             this._box.add_actor(this._label(_("Right-click → Configure to add a tracker"),
-                                            "time-since-sub", 0.85));
+                                            "since-until-sub", 0.85));
         } else {
             active.forEach((t, i) => {
                 if (i > 0)
                     this._box.add_actor(new St.Widget({
-                        style_class: "time-since-separator",
+                        style_class: "since-until-separator",
                         x_expand: true
                     }));
                 this._box.add_actor(this._makeTracker(t, now));
@@ -410,12 +410,12 @@ class TimeSinceDesklet extends Desklet.Desklet {
 
     _chooseFile(save, callback) {
         let argv = ["zenity", "--file-selection", "--title",
-                    save ? _("Back up Time Since trackers") : _("Restore Time Since trackers"),
+                    save ? _("Back up trackers") : _("Restore trackers"),
                     "--file-filter", _("JSON files") + " | *.json"];
         if (save) {
             let stamp = GLib.DateTime.new_now_local().format("%Y-%m-%d");
             argv.push("--save", "--filename",
-                      GLib.build_filenamev([GLib.get_home_dir(), `time-since-backup-${stamp}.json`]));
+                      GLib.build_filenamev([GLib.get_home_dir(), `since-until-backup-${stamp}.json`]));
         }
         Util.spawnCommandLineAsyncIO(null, (stdout, stderr, code) => {
             let path = (stdout || "").trim();
@@ -430,9 +430,9 @@ class TimeSinceDesklet extends Desklet.Desklet {
                 let data = JSON.stringify(this.settings.settingsData, null, 4);
                 GLib.file_set_contents(path, data);
                 let n = (this.trackers || []).length;
-                Main.notify(_("Time Since"), _("Backed up %d tracker(s) to %s").format(n, path));
+                Main.notify(_("Since and Until"), _("Backed up %d tracker(s) to %s").format(n, path));
             } catch (e) {
-                Main.notifyError(_("Time Since: backup failed"), String(e));
+                Main.notifyError(_("Since and Until: backup failed"), String(e));
             }
         });
     }
@@ -443,7 +443,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
                 let [, bytes] = GLib.file_get_contents(path);
                 let data = JSON.parse(new TextDecoder().decode(bytes));
                 if (!data || !data.trackers || !Array.isArray(data.trackers.value))
-                    throw new Error(_("Not a Time Since backup"));
+                    throw new Error(_("This file is not a Since and Until backup"));
                 for (let key in this.settings.settingsData) {
                     let mine = this.settings.settingsData[key];
                     if (key === "__md5__" || !mine || mine.value === undefined) continue;
@@ -451,10 +451,10 @@ class TimeSinceDesklet extends Desklet.Desklet {
                         this.settings.setValue(key, data[key].value);
                 }
                 this._rebuild();
-                Main.notify(_("Time Since"),
+                Main.notify(_("Since and Until"),
                     _("Restored %d tracker(s) from %s").format(data.trackers.value.length, path));
             } catch (e) {
-                Main.notifyError(_("Time Since: restore failed"), String(e.message || e));
+                Main.notifyError(_("Since and Until: restore failed"), String(e.message || e));
             }
         });
     }
@@ -487,5 +487,5 @@ class TimeSinceDesklet extends Desklet.Desklet {
 }
 
 function main(metadata, deskletId) {
-    return new TimeSinceDesklet(metadata, deskletId);
+    return new SinceUntilDesklet(metadata, deskletId);
 }
