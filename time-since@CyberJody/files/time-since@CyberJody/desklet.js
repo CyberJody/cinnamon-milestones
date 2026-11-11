@@ -45,7 +45,11 @@ class TimeSinceDesklet extends Desklet.Desklet {
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true
         });
-        this._unitsBox = new St.BoxLayout({ style_class: "time-since-units" });
+        this._unitsBox = new St.BoxLayout({
+            style_class: "time-since-units",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
         this._sinceLabel = new St.Label({
             style_class: "time-since-sub",
             x_align: Clutter.ActorAlign.CENTER,
@@ -63,8 +67,16 @@ class TimeSinceDesklet extends Desklet.Desklet {
 
     _makeUnit(value, label) {
         let unit = new St.BoxLayout({ vertical: true, style_class: "time-since-unit" });
-        let num = new St.Label({ text: String(value), style_class: "time-since-number" });
-        let lbl = new St.Label({ text: label, style_class: "time-since-label" });
+        let num = new St.Label({
+            text: String(value),
+            style_class: "time-since-number",
+            x_align: Clutter.ActorAlign.CENTER
+        });
+        let lbl = new St.Label({
+            text: label,
+            style_class: "time-since-label",
+            x_align: Clutter.ActorAlign.CENTER
+        });
         num.set_style(`font-size: ${2.4 * this.scale}em;`);
         lbl.set_style(`font-size: ${0.8 * this.scale}em;`);
         unit.add_actor(num);
