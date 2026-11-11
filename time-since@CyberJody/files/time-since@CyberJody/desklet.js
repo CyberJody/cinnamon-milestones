@@ -2,6 +2,7 @@ const Desklet = imports.ui.desklet;
 const Settings = imports.ui.settings;
 const St = imports.gi.St;
 const Clutter = imports.gi.Clutter;
+const Pango = imports.gi.Pango;
 const GLib = imports.gi.GLib;
 const Gettext = imports.gettext;
 
@@ -51,9 +52,12 @@ class TimeSinceDesklet extends Desklet.Desklet {
             x_expand: true
         });
 
+        this._sinceLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        this._titleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+
         this._box.add_actor(this._titleLabel);
-        this._box.add_actor(this._unitsBox);
         this._box.add_actor(this._sinceLabel);
+        this._box.add_actor(this._unitsBox);
         this.setContent(this._box);
     }
 
@@ -91,6 +95,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
         if (!target) {
             this._titleLabel.set_text(this.title || _("Time Since"));
             this._sinceLabel.set_text(_("Right-click → Configure to set a date"));
+            this._fitWidth();
             return;
         }
 
@@ -114,8 +119,19 @@ class TimeSinceDesklet extends Desklet.Desklet {
             this._unitsBox.add_actor(this._makeUnit(seconds, seconds === 1 ? _("sec") : _("secs")));
 
         let when = target.format("%b %-d, %Y %-l:%M %p");
-        this._sinceLabel.set_text((future ? _("until") : _("since")) + " " + when);
+        this._sinceLabel.set_text((future ? _("Until") : _("Since")) + " " + when);
         this._sinceLabel.visible = this.showSinceLine;
+        this._fitWidth();
+    }
+
+    _fitWidth() {
+        // The desklet frame caches its first measured width and won't grow
+        // when a wider line (e.g. the Since/Until subtitle) appears, which
+        // clips the text. Pin the box to its natural width so the frame
+        // always fits the widest line.
+        this._box.set_width(-1);
+        let [, natural] = this._box.get_preferred_width(-1);
+        this._box.set_width(natural);
     }
 
     _schedule() {
