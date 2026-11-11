@@ -1,4 +1,4 @@
-# Since and Until
+# Milestones
 
 A desklet that shows how long it has been since a date and time — or how long until one — in days, hours and minutes (seconds optional). One desklet can hold several trackers, stacked top to bottom.
 
@@ -6,7 +6,7 @@ It sets no colors of its own, so it picks up your Cinnamon theme's text and desk
 
 ## Usage
 
-1. Right-click the desktop → **Add Desklets**, add **Since and Until**.
+1. Right-click the desktop → **Add Desklets**, add **Milestones**.
 2. Right-click the desklet → **Configure…**
 3. Under **Trackers**, click **+**, then fill in the tracker below the table.
 

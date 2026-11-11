@@ -15,7 +15,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SPICE = os.path.join(HERE, "..", "since-until@CyberJody", "files", "since-until@CyberJody")
+SPICE = os.path.join(HERE, "..", "milestones@CyberJody", "files", "milestones@CyberJody")
 spec = importlib.util.spec_from_file_location("TrackerEditor", os.path.join(SPICE, "TrackerEditor.py"))
 te = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(te)
