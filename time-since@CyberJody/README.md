@@ -8,25 +8,25 @@ It sets no colors of its own, so it picks up your Cinnamon theme's text and desk
 
 1. Right-click the desktop → **Add Desklets**, add **Time Since**.
 2. Right-click the desklet → **Configure…**
-3. Under **Trackers**, click **+** and enter a title, date and time.
+3. Under **Trackers**, click **+**, then fill in the tracker below the table.
 
 Past dates count up ("Since …"); future dates count down ("Until …") and switch to counting up once they pass.
 
-## Tracker fields
+## Editing a tracker
 
-Every field except the title is a picker, so there is nothing to format.
+Select a tracker in the table and change it with the controls underneath. Changes are saved as you make them, so the desklet updates while you edit.
 
-- **Show** – untick to hide a tracker without deleting it
 - **Title** – shown above the counter (optional)
-- **Month / Day** – the date
-- **Year** – typed, 4 digits. Leave blank for Monthly and Yearly trackers.
-- **Hr / AM/PM / Min** – the time. Hour is 1–12 with AM or PM, or 0–23 with 24H.
-- **Monthly** – repeats on the chosen day every month; month and year are ignored. Days past the end of a month fall on its last day (31st → Nov 30).
-- **Yearly** – birthdays, anniversaries; repeats on the chosen month and day every year; year is ignored. Feb 29 falls on Feb 28 in non-leap years.
+- **Date** – pick the month, type the year, and click the day in the calendar. The calendar always matches the month: February offers 28 or 29 days, and with a year it lines the days up under their weekdays.
+- **Time** – type the hour and minutes and choose **AM**, **PM** or **24H**. Hours are 1–12 with AM/PM and 0–23 with 24H; a blank hour means midnight.
+- **Monthly** – repeats on the chosen day every month. The calendar becomes a plain 1–31 picker; shorter months use their last day (31st → Nov 30).
+- **Yearly** – birthdays, anniversaries; repeats on the chosen month and day every year. Feb 29 falls on Feb 28 in non-leap years.
 
-A repeating tracker counts down to its next occurrence and starts over once it arrives. A one-off tracker counts down to a future date or up from a past one.
+Repeating trackers have no year, so the Year box is hidden for them. They count down to the next occurrence and start over once it arrives.
 
-Use the arrow buttons to reorder. An impossible date (e.g. February 31) shows an error on the desklet instead of a counter.
+The line under the form spells out what the tracker counts to ("Tuesday, November 10, 2026 at 9:30 PM.") or says what is still missing ("Enter a year, or tick Monthly or Yearly.").
+
+In the table, **Show** hides a tracker without deleting it, and the arrow buttons change the order trackers appear in on the desklet.
 
 ## Backup
 

@@ -220,10 +220,7 @@ class TimeSinceDesklet extends Desklet.Desklet {
         if (legacy && (this.trackers || []).length === 0)
             this.trackers = [legacy];
 
-        let rows = this.trackers || [];
-        let upgraded = rows.map(upgradeRow);
-        if (JSON.stringify(upgraded) !== JSON.stringify(rows))
-            this.trackers = upgraded;
+        this._upgradeRows();
 
         // No hardcoded colors anywhere: text, borders and background all
         // come from the active Cinnamon theme, so the desklet follows theme
@@ -391,7 +388,18 @@ class TimeSinceDesklet extends Desklet.Desklet {
         }
     }
 
+    // Rows saved by an older version (first load, or a backup restored
+    // later) are converted to the current fields and written back, so the
+    // settings window edits the same thing the desklet shows.
+    _upgradeRows() {
+        let rows = this.trackers || [];
+        let upgraded = rows.map(upgradeRow);
+        if (JSON.stringify(upgraded) !== JSON.stringify(rows))
+            this.trackers = upgraded;
+    }
+
     _rebuild() {
+        this._upgradeRows();
         this._update();
         this._schedule();
     }

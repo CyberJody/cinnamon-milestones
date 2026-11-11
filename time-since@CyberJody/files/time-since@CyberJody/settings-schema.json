@@ -4,101 +4,13 @@
         "description": "Trackers"
     },
     "trackers": {
-        "type": "list",
-        "description": "Trackers",
-        "columns": [
-            {
-                "id": "enabled",
-                "title": "Show",
-                "type": "boolean",
-                "default": true
-            },
-            {
-                "id": "title",
-                "title": "Title",
-                "type": "string",
-                "default": ""
-            },
-            {
-                "id": "month",
-                "title": "Month",
-                "type": "integer",
-                "default": 1,
-                "options": {
-                    "Jan": 1,
-                    "Feb": 2,
-                    "Mar": 3,
-                    "Apr": 4,
-                    "May": 5,
-                    "Jun": 6,
-                    "Jul": 7,
-                    "Aug": 8,
-                    "Sep": 9,
-                    "Oct": 10,
-                    "Nov": 11,
-                    "Dec": 12
-                }
-            },
-            {
-                "id": "day",
-                "title": "Day",
-                "type": "integer",
-                "default": 1,
-                "min": 1,
-                "max": 31,
-                "step": 1
-            },
-            {
-                "id": "year",
-                "title": "Year",
-                "type": "string",
-                "default": ""
-            },
-            {
-                "id": "hour",
-                "title": "Hr",
-                "type": "string",
-                "default": ""
-            },
-            {
-                "id": "clock",
-                "title": "AM/PM",
-                "type": "string",
-                "default": "am",
-                "options": {
-                    "AM": "am",
-                    "PM": "pm",
-                    "24H": "24h"
-                }
-            },
-            {
-                "id": "minute",
-                "title": "Min",
-                "type": "integer",
-                "default": 0,
-                "min": 0,
-                "max": 59,
-                "step": 1
-            },
-            {
-                "id": "monthly",
-                "title": "Monthly",
-                "type": "boolean",
-                "default": false
-            },
-            {
-                "id": "yearly",
-                "title": "Yearly",
-                "type": "boolean",
-                "default": false
-            }
-        ],
-        "default": [],
-        "height": 124
+        "type": "generic",
+        "default": []
     },
-    "help-formats": {
-        "type": "label",
-        "description": "Year can be blank for Monthly/Yearly. Hour: 1–12 with AM/PM, or 0–23 with 24H."
+    "trackers-editor": {
+        "type": "custom",
+        "file": "TrackerEditor.py",
+        "widget": "TrackerEditor"
     },
     "head-display": {
         "type": "header",
