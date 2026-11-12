@@ -2,7 +2,7 @@
     "uuid": "milestones@CyberJody",
     "name": "Milestones",
     "description": "Counts the days, hours and minutes since or until your dates. Several trackers in one desklet, with monthly and yearly repeats for birthdays and anniversaries. Follows your Cinnamon theme.",
-    "version": "1.9",
+    "version": "1.10",
     "max-instances": "10",
     "website": "https://github.com/CyberJody/cinnamon-milestones"
 }

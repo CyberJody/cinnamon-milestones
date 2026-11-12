@@ -35,6 +35,12 @@
         "units": "×",
         "description": "Size"
     },
+    "keep-on-top": {
+        "type": "switch",
+        "default": false,
+        "description": "Keep on top of other windows",
+        "tooltip": "Show the desklet above open windows instead of behind them. It is hidden while a window on the same screen is fullscreen."
+    },
     "head-backup": {
         "type": "header",
         "description": "Backup"

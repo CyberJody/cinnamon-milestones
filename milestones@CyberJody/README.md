@@ -37,3 +37,4 @@ In the table, **Show** hides a tracker without deleting it, and the arrow button
 - **Show seconds** – tick every second instead of every minute
 - **Show the "Since / Until" line** – the target date under each title
 - **Size** – scale the whole desklet
+- **Keep on top of other windows** – show the desklet above open windows instead of behind them. It stays below panels and menus, still drags and right-clicks as usual, and hides while a window on the same screen is fullscreen (videos, games). Turn it off to send it back behind windows.

@@ -5,6 +5,7 @@ const Clutter = imports.gi.Clutter;
 const Pango = imports.gi.Pango;
 const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
+const DeskletManager = imports.ui.deskletManager;
 const Util = imports.misc.util;
 const Gettext = imports.gettext;
 
@@ -206,6 +207,9 @@ class MilestonesDesklet extends Desklet.Desklet {
     constructor(metadata, deskletId) {
         super(metadata, deskletId);
         this._timeoutId = 0;
+        this._onTop = false;
+        this._parentSetId = 0;
+        this._relayerId = 0;
 
         // Read v1.0's single-tracker values before DeskletSettings loads:
         // its schema upgrade drops keys that no longer exist.
@@ -216,6 +220,7 @@ class MilestonesDesklet extends Desklet.Desklet {
         this.settings.bind("show-seconds", "showSeconds", this._rebuild);
         this.settings.bind("show-since-line", "showSinceLine", this._rebuild);
         this.settings.bind("scale", "scale", this._rebuild);
+        this.settings.bind("keep-on-top", "keepOnTop", this._applyOnTop);
 
         if (legacy && (this.trackers || []).length === 0)
             this.trackers = [legacy];
@@ -459,12 +464,92 @@ class MilestonesDesklet extends Desklet.Desklet {
         });
     }
 
+    // ---- Keep on top of other windows ----
+    // Cinnamon puts every desklet in one container below all windows, so
+    // the only way to float above them is to move our actor out of it, into
+    // the UI layer just above the windows (still below panels and menus).
+    // There it is tracked as "chrome": it takes clicks over windows and is
+    // hidden while a window on its monitor is fullscreen.
+
+    _applyOnTop() {
+        if (!this.actor || !Main.deskletContainer) return;
+        let parent = this.actor.get_parent();
+        let container = Main.deskletContainer.actor;
+
+        if (this.keepOnTop) {
+            if (!this._parentSetId)
+                this._parentSetId = this.actor.connect("parent-set", () => this._onParentSet());
+            // While dragging, DND owns the actor; it comes back via parent-set.
+            if (parent === container) {
+                global.reparentActor(this.actor, Main.uiGroup);
+                Main.uiGroup.set_child_above_sibling(this.actor, global.window_group);
+            }
+            if (this.actor.get_parent() === Main.uiGroup) {
+                if (!Main.layoutManager.isTrackingChrome(this.actor))
+                    Main.layoutManager.addChrome(this.actor, { doNotAdd: true });
+                this._isTracked = true;
+                this._onTop = true;
+                Main.layoutManager.updateChrome(true);   // apply fullscreen hiding now
+            }
+        } else if (this._onTop) {
+            this._onTop = false;
+            this._disconnectParentSet();
+            if (parent === Main.uiGroup) {
+                Main.uiGroup.set_skip_paint(this.actor, false);
+                global.reparentActor(this.actor, container);
+            }
+            // Back to Cinnamon's usual rule: clickable only when no window
+            // is under the pointer.
+            if (DeskletManager.hasMouseWindow())
+                super._untrackMouse();
+            else
+                this._trackMouse();
+        }
+    }
+
+    // Dropping a dragged desklet (or cancelling the drag) puts it back in
+    // the desklet container; lift it again once the drag has finished.
+    _onParentSet() {
+        if (!this.keepOnTop || this._relayerId) return;
+        if (this.actor.get_parent() !== Main.deskletContainer.actor) return;
+        this._relayerId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._relayerId = 0;
+            this._applyOnTop();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _disconnectParentSet() {
+        if (this._parentSetId) {
+            this.actor.disconnect(this._parentSetId);
+            this._parentSetId = 0;
+        }
+        if (this._relayerId) {
+            GLib.source_remove(this._relayerId);
+            this._relayerId = 0;
+        }
+    }
+
+    // Cinnamon stops a desklet taking clicks whenever a window is under the
+    // pointer, which is right for desklets behind windows. On top, the
+    // window under the pointer is below us, so keep taking clicks.
+    _untrackMouse() {
+        if (this._onTop) return;
+        super._untrackMouse();
+    }
+
     on_desklet_added_to_desktop() {
         this._rebuild();
+        this._applyOnTop();
     }
 
     on_desklet_removed() {
         this._stopTimer();
+        this._disconnectParentSet();
+        if (this._onTop && this.actor) {
+            Main.uiGroup.set_skip_paint(this.actor, false);
+            this._onTop = false;
+        }
         if (this.settings) {
             // Cinnamon calls this after a fade-out, so on reload the new
             // instance may already have registered under the same id.
